@@ -1,3 +1,4 @@
+"use server";
 // app/api/upload/route.js
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
@@ -5,7 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 export async function POST(req) {
@@ -13,38 +14,31 @@ export async function POST(req) {
     const formData = await req.formData();
     const file = formData.get("video_file");
     const buffer = Buffer.from(await file.arrayBuffer());
-
     const base64Video = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-    // Simplified upload configuration
+    // Upload with VTT generation
     const uploadResult = await cloudinary.uploader.upload(base64Video, {
       resource_type: "video",
       public_id: `videos/${Date.now()}`,
-      raw_convert: "google_speech", // Keep it simple
+      raw_convert: "google_speech:vtt", // Request VTT format
     });
 
-    const cloud_name = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 
-    // Construct URLs exactly as in the article
-    const transcriptFiles = {
-      json: `https://res.cloudinary.com/${cloud_name}/raw/upload/v${
-        uploadResult.version + 1
-      }/${uploadResult.public_id}.transcript`,
-      vtt: `https://res.cloudinary.com/${cloud_name}/raw/upload/v${
-        uploadResult.version + 1
-      }/${uploadResult.public_id}.vtt`,
-      srt: `https://res.cloudinary.com/${cloud_name}/raw/upload/v${
-        uploadResult.version + 1
-      }/${uploadResult.public_id}.srt`,
-    };
+    // Construct URLs following the documentation pattern
+    const videoUrl = uploadResult.secure_url;
+    const vttUrl = `https://res.cloudinary.com/${cloudName}/raw/upload/v${
+      uploadResult.version + 1
+    }/${uploadResult.public_id}.vtt`;
 
     return NextResponse.json({
-      videoUrl: uploadResult.secure_url,
-      transcriptFiles,
+      videoUrl,
+      vttUrl,
     });
   } catch (error) {
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { error: error.message || "Upload failed" },
+      { error: "Failed to upload video" },
       { status: 500 }
     );
   }
