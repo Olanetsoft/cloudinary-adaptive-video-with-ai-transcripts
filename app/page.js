@@ -1,3 +1,4 @@
+// app/page.js
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -44,6 +45,15 @@ export default function Home() {
     return () => clearInterval(intervalId);
   }, [videoUrl]);
 
+  // Handle video play
+  const handleVideoPlay = () => {
+    if (vttUrl) {
+      toast.info(
+        "Generating subtitles. They will appear automatically when ready."
+      );
+    }
+  };
+
   const handleUpload = async (e) => {
     const file = e.target?.files?.[0];
     if (!file) return;
@@ -64,8 +74,8 @@ export default function Home() {
       if (!response.ok) throw new Error("Upload failed");
       const data = await response.json();
 
-      console.log(data.vttUrl);
-      console.log(data.videoUrl);
+      console.log("VTT URL:", data.vttUrl);
+      console.log("Video URL:", data.videoUrl);
       setVideoUrl(data.videoUrl);
       setVttUrl(data.vttUrl);
 
@@ -82,7 +92,6 @@ export default function Home() {
   const simulateThrottling = () => {
     setIsThrottled(!isThrottled);
     if (!isThrottled) {
-      // Add quality transformation for throttled state
       const throttledUrl = videoUrl.replace("/upload/", "/upload/q_auto:low/");
       setCurrentQuality("360p");
       videoRef.current.src = throttledUrl;
@@ -142,6 +151,7 @@ export default function Home() {
                 playsInline
                 autoBuffer
                 muted
+                onPlay={handleVideoPlay}
               >
                 <source src={videoUrl} type="video/mp4" />
                 {vttUrl && (
